@@ -1,8 +1,6 @@
 <style>
-  /* Import Roboto from Google Fonts */
   @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700;900&display=swap');
 
-  /* Wrapper starts as hidden */
   #wrvo-ticker-container {
     display: none; 
     width: 100%;
@@ -16,7 +14,6 @@
     width: 100%;
   }
 
-  /* The Main Bar */
   #ticker-bar {
     display: flex;
     width: 100%;
@@ -25,11 +22,10 @@
     box-shadow: 0 2px 5px rgba(0,0,0,0.15);
   }
 
-  /* Red Label Section */
   #ticker-label {
     background-color: #bd2100;
     color: #ffffff;
-    font-weight: 900; /* Heavy weight for Roboto */
+    font-weight: 900;
     text-transform: uppercase;
     padding: 0 25px;
     display: flex;
@@ -42,7 +38,6 @@
     border-right: 2px solid #ffffff;
   }
 
-  /* WRVO Blue Section */
   #ticker-main {
     background-color: #204180;
     flex-grow: 1;
@@ -52,7 +47,6 @@
     overflow: hidden;
   }
 
-  /* The Scrolling Track */
   #ticker-track {
     display: flex;
     white-space: nowrap;
@@ -63,7 +57,7 @@
   .ticker-item {
     color: #ffffff;
     font-size: 18px;
-    margin-right: 80px;
+    margin-right: 100px; /* Wider gap for longer messages */
     display: flex;
     align-items: center;
   }
@@ -71,9 +65,13 @@
   .ticker-school {
     font-weight: 700;
     margin-right: 8px;
+    text-transform: uppercase;
   }
 
-  /* Timestamp below the bar */
+  .ticker-status {
+    font-weight: 400;
+  }
+
   #ticker-timestamp {
     display: block;
     width: 100%;
@@ -89,14 +87,8 @@
     to { transform: translateX(-100%); }
   }
 
-  /* Hover Effects */
-  #ticker-link-wrap:hover #ticker-track {
-    animation-play-state: paused;
-  }
-  
-  #ticker-link-wrap:hover #ticker-label {
-    background-color: #e62900;
-  }
+  #ticker-link-wrap:hover #ticker-track { animation-play-state: paused; }
+  #ticker-link-wrap:hover #ticker-label { background-color: #e62900; }
 </style>
 
 <div id="wrvo-ticker-container">
@@ -104,8 +96,7 @@
     <div id="ticker-bar">
       <div id="ticker-label">Closings & Delays</div>
       <div id="ticker-main">
-        <div id="ticker-track">
-          </div>
+        <div id="ticker-track"></div>
       </div>
     </div>
     <div id="ticker-timestamp">Checking for updates...</div>
@@ -134,20 +125,26 @@ async function startTicker() {
       
       if (cols.length >= 2) {
         const school = cols[0].replace(/"/g, "").trim();
-        const status = cols[1].replace(/"/g, "").trim();
+        
+        // Skip Header Row
+        if (school.toLowerCase() === "school" || school.toLowerCase() === "school name") continue;
 
-        // Skip headers
-        const isHeader = school.toLowerCase() === "school" || 
-                         school.toLowerCase() === "school name" || 
-                         status.toLowerCase() === "status";
-                         
-        if (isHeader) continue;
+        // Gather all status messages from Cols B, C, and D
+        let statusParts = [];
+        for (let j = 1; j <= 3; j++) {
+            if (cols[j]) {
+                const cleanMsg = cols[j].replace(/"/g, "").trim();
+                if (cleanMsg) statusParts.push(cleanMsg);
+            }
+        }
 
-        if (school && status) {
+        // Only add to ticker if there is a school name AND at least one message
+        if (school && statusParts.length > 0) {
+          const fullStatus = statusParts.join(" | ");
           tickerHtml += `
             <span class="ticker-item">
               <span class="ticker-school">${school}:</span> 
-              <span class="ticker-status">${status}</span>
+              <span class="ticker-status">${fullStatus}</span>
             </span>`;
           entriesFound++;
         }
@@ -158,13 +155,11 @@ async function startTicker() {
       track.innerHTML = tickerHtml;
       container.style.display = 'block';
       
-      // Update Timestamp
       const now = new Date();
-      const timeString = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-      timeDisplay.innerText = "Last Updated: " + timeString;
+      timeDisplay.innerText = "Last Updated: " + now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
       
-      // Speed Calculation
-      const pixelsPerSecond = 80; 
+      // Calculate speed based on length of combined text
+      const pixelsPerSecond = 70; // Slightly slower because messages are longer now
       const duration = (main.offsetWidth + track.offsetWidth) / pixelsPerSecond;
       track.style.animation = `marquee ${duration}s linear infinite`;
     } else {
@@ -179,5 +174,5 @@ async function startTicker() {
 
 window.addEventListener('resize', startTicker);
 startTicker();
-setInterval(startTicker, 300000); // Check every 5 mins
+setInterval(startTicker, 300000);
 </script>
