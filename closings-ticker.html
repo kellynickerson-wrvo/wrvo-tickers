@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        body { margin: 0; padding: 0; background: transparent; overflow: hidden; }
+        
+        #school-ticker-banner { 
+            font-family: 'Arial', sans-serif; 
+            background: #002a5c; /* WRVO Navy Blue */
+            color: white; 
+            height: 48px; 
+            display: flex; 
+            align-items: center; 
+            overflow: hidden; 
+            border-bottom: 3px solid #b32400; /* Red accent border */
+        }
+
+        .ticker-label { 
+            background: #b32400; /* WRVO Donate Button Red */
+            padding: 0 20px; 
+            height: 100%; 
+            display: flex; 
+            align-items: center; 
+            font-weight: bold; 
+            z-index: 10; 
+            text-transform: uppercase; 
+            font-size: 0.85em;
+            letter-spacing: 1px;
+            box-shadow: 5px 0 15px rgba(0,0,0,0.3);
+        }
+
+        .ticker-wrap { flex-grow: 1; overflow: hidden; position: relative; display: flex; align-items: center; }
+        
+        .ticker-text { 
+            white-space: nowrap; 
+            display: inline-block; 
+            padding-left: 100%;
+            animation: schoolCrawl 65s linear infinite; /* Slow news crawl pace */
+            font-size: 1.1em;
+        }
+
+        @keyframes schoolCrawl {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-100%); }
+        }
+
+        .closing-item { padding: 0 45px; display: inline-block; }
+        
+        /* Highlight the status in gold for high visibility */
+        .closing-item strong { color: #ffcc00; text-transform: uppercase; } 
+    </style>
+</head>
+<body>
+
+    <div id="school-ticker-banner">
+        <div class="ticker-label">Closings & Delays</div>
+        <div class="ticker-wrap" id="ticker-container">
+            <div class="ticker-text" id="ticker-content">Loading latest updates...</div>
+        </div>
+    </div>
+
+    <script>
+        // Replace with your Published CSV URL from Google Sheets
+        const SHEET_CSV_URL = https://docs.google.com/spreadsheets/d/e/2PACX-1vRijmTFMmlSUW6T-q2Yt_0QW0Y_2BLXVyxmX49Grb8gZFfJ0oh7lzdSPON1F0QRHum75rkoEJrLdb-b/pubhtml;
+
+        async function updateClosings() {
+            try {
+                const response = await fetch(SHEET_CSV_URL);
+                const data = await response.text();
+                
+                // Parse CSV rows
+                const rows = data.split('\n').slice(1); 
+                let closingStrings = [];
+
+                rows.forEach(row => {
+                    // This splits by comma - if your school names have commas, we can adjust this
+                    const columns = row.split(',');
+                    if (columns.length >= 2) {
+                        const name = columns[0].replace(/"/g, "").trim();
+                        const status = columns[1].replace(/"/g, "").trim();
+                        
+                        // Ignore normal operations
+                        const ignoreList = ['open', 'normal', 'none', 'on time'];
+                        if (!ignoreList.includes(status.toLowerCase()) && name !== "") {
+                            closingStrings.push(`<span class="closing-item">${name}: <strong>${status}</strong></span>`);
+                        }
+                    }
+                });
+
+                const contentDiv = document.getElementById('ticker-content');
+                
+                if (closingStrings.length > 0) {
+                    // Double the content for a seamless, infinite loop
+                    const finalHtml = closingStrings.join(' • ') + ' • ' + closingStrings.join(' • ');
+                    contentDiv.innerHTML = finalHtml;
+                    document.getElementById('school-ticker-banner').style.display = 'flex';
+                } else {
+                    // Hide the banner if there's nothing to report
+                    document.getElementById('school-ticker-banner').style.display = 'none';
+                }
+            } catch (err) {
+                console.error("Feed error:", err);
+            }
+        }
+
+        // Check for updates every 2 minutes
+        updateClosings();
+        setInterval(updateClosings, 120000);
+    </script>
+</body>
+</html>
