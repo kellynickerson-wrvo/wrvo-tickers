@@ -1,7 +1,7 @@
 <style>
-  /* The main container is now a link */
+  /* The main container is a clickable link */
   #ticker-link-wrap {
-    text-decoration: none; /* Removes underlines from the whole bar */
+    text-decoration: none;
     display: block;
     width: 100%;
     margin: 10px 0;
@@ -35,7 +35,7 @@
 
   /* Dark Blue Ticker Section */
   #ticker-main {
-    background-color: #001f3f;
+    background-color: #204180;
     flex-grow: 1;
     position: relative;
     display: flex;
@@ -57,7 +57,6 @@
     margin-right: 80px;
     display: flex;
     align-items: center;
-    text-decoration: none !important;
   }
 
   .ticker-school {
@@ -82,7 +81,7 @@
   }
   
   #ticker-link-wrap:hover #ticker-label {
-    background-color: #e62900; /* Subtle brighten to show it's clickable */
+    background-color: #e62900;
   }
 </style>
 
@@ -91,7 +90,7 @@
     <div id="ticker-label">Closings & Delays</div>
     <div id="ticker-main">
       <div id="ticker-track">
-        <span class="ticker-item">Fetching latest updates...</span>
+        <span class="ticker-item">Loading live updates...</span>
       </div>
     </div>
   </div>
@@ -106,17 +105,28 @@ async function startTicker() {
   try {
     const response = await fetch(`${csvUrl}&t=${new Date().getTime()}`);
     const text = await response.text();
+    
+    // Split into rows and remove any entirely empty lines
     const rows = text.split(/\r?\n/).filter(row => row.trim() !== "");
     
     let tickerHtml = "";
     let entriesFound = 0;
 
-    // Start at 1 to skip header
-    for (let i = 1; i < rows.length; i++) {
+    // Loop through every row
+    for (let i = 0; i < rows.length; i++) {
       const cols = rows[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+      
       if (cols.length >= 2) {
         const school = cols[0].replace(/"/g, "").trim();
         const status = cols[1].replace(/"/g, "").trim();
+
+        // --- THE HEADER FILTER ---
+        // We skip the row if it looks like a header label
+        const isHeader = school.toLowerCase() === "school" || 
+                         school.toLowerCase() === "school name" || 
+                         status.toLowerCase() === "status";
+                         
+        if (isHeader) continue;
 
         if (school && status) {
           tickerHtml += `
@@ -132,7 +142,7 @@ async function startTicker() {
     if (entriesFound > 0) {
       track.innerHTML = tickerHtml;
       
-      // SPEED CALCULATION
+      // CONSISTENT SPEED: Change '80' to adjust overall speed (higher = faster)
       const pixelsPerSecond = 80; 
       const totalDistance = main.offsetWidth + track.offsetWidth;
       const duration = totalDistance / pixelsPerSecond;
@@ -152,9 +162,7 @@ async function startTicker() {
   }
 }
 
-// Recalculate on resize to keep speed consistent
 window.addEventListener('resize', startTicker);
-
 startTicker();
-setInterval(startTicker, 300000); // 5-minute background refresh
+setInterval(startTicker, 300000); // Background refresh every 5 mins
 </script>
