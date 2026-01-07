@@ -1,112 +1,139 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <style>
-        body { margin: 0; padding: 0; background: transparent; overflow: hidden; }
-        
-        #school-ticker-banner { 
-            font-family: 'Arial', sans-serif; 
-            background: #002a5c; /* WRVO Navy Blue */
-            color: white; 
-            height: 48px; 
-            display: flex; 
-            align-items: center; 
-            overflow: hidden; 
-            border-bottom: 3px solid #b32400; /* Red accent border */
-        }
+<style>
+  /* Main Container */
+  #ticker-bar {
+    display: flex;
+    width: 100%;
+    height: 50px; /* Adjusted for better visibility */
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    overflow: hidden;
+    margin: 10px 0;
+  }
 
-        .ticker-label { 
-            background: #b32400; /* WRVO Donate Button Red */
-            padding: 0 20px; 
-            height: 100%; 
-            display: flex; 
-            align-items: center; 
-            font-weight: bold; 
-            z-index: 10; 
-            text-transform: uppercase; 
-            font-size: 0.85em;
-            letter-spacing: 1px;
-            box-shadow: 5px 0 15px rgba(0,0,0,0.3);
-        }
+  /* Red Label Section (Left side) */
+  #ticker-label {
+    background-color: #bd2100; /* Matching the orange-red in your image */
+    color: #ffffff;
+    font-weight: 800;
+    text-transform: uppercase;
+    padding: 0 25px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+    z-index: 10;
+    font-size: 15px;
+    letter-spacing: 1px;
+    border-right: 2px solid #ffffff;
+  }
 
-        .ticker-wrap { flex-grow: 1; overflow: hidden; position: relative; display: flex; align-items: center; }
-        
-        .ticker-text { 
-            white-space: nowrap; 
-            display: inline-block; 
-            padding-left: 100%;
-            animation: schoolCrawl 65s linear infinite; /* Slow news crawl pace */
-            font-size: 1.1em;
-        }
+  /* Dark Blue Ticker Section (Right side) */
+  #ticker-main {
+    background-color: #204180; /* Deep Navy Blue */
+    flex-grow: 1;
+    position: relative;
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+  }
 
-        @keyframes schoolCrawl {
-            0% { transform: translateX(0); }
-            100% { transform: translateX(-100%); }
-        }
+  /* The Scrolling Track */
+  #ticker-track {
+    display: flex;
+    white-space: nowrap;
+    padding-left: 100%;
+    animation: marquee 180s linear infinite; /* Adjust speed here (higher = slower) */
+  }
 
-        .closing-item { padding: 0 45px; display: inline-block; }
-        
-        /* Highlight the status in gold for high visibility */
-        .closing-item strong { color: #ffcc00; text-transform: uppercase; } 
-    </style>
-</head>
-<body>
+  .ticker-item {
+    color: #ffffff;
+    font-size: 18px;
+    margin-right: 80px;
+    display: flex;
+    align-items: center;
+  }
 
-    <div id="school-ticker-banner">
-        <div class="ticker-label">Closings & Delays</div>
-        <div class="ticker-wrap" id="ticker-container">
-            <div class="ticker-text" id="ticker-content">Loading latest updates...</div>
-        </div>
+  .ticker-school {
+    font-weight: bold;
+    margin-right: 8px;
+  }
+
+  .ticker-status {
+    color: #ffffff;
+    font-weight: 400;
+  }
+
+  /* Animation */
+  @keyframes marquee {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-100%); }
+  }
+
+  /* Pause on hover so people can read a specific line */
+  #ticker-main:hover #ticker-track {
+    animation-play-state: paused;
+  }
+</style>
+
+<div id="ticker-bar">
+  <div id="ticker-label">Closings & Delays</div>
+  <div id="ticker-main">
+    <div id="ticker-track">
+      <span class="ticker-item">Fetching latest updates...</span>
     </div>
+  </div>
+</div>
 
-    <script>
-        // Replace with your Published CSV URL from Google Sheets
-        const SHEET_CSV_URL = https://docs.google.com/spreadsheets/d/e/2PACX-1vRijmTFMmlSUW6T-q2Yt_0QW0Y_2BLXVyxmX49Grb8gZFfJ0oh7lzdSPON1F0QRHum75rkoEJrLdb-b/pubhtml;
+<script>
+async function startTicker() {
+  // YOUR ACTUAL DATA URL
+  const csvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRijmTFMmlSUW6T-q2Yt_0QW0Y_2BLXVyxmX49Grb8gZFfJ0oh7lzdSPON1F0QRHum75rkoEJrLdb-b/pub?output=csv";
+  const track = document.getElementById('ticker-track');
+  
+  try {
+    // Fetch and bypass cache to get real-time data
+    const response = await fetch(`${csvUrl}&t=${new Date().getTime()}`);
+    const text = await response.text();
+    
+    // Split into rows
+    const rows = text.split(/\r?\n/).filter(row => row.trim() !== "");
+    
+    let tickerHtml = "";
+    let entriesFound = 0;
 
-        async function updateClosings() {
-            try {
-                const response = await fetch(SHEET_CSV_URL);
-                const data = await response.text();
-                
-                // Parse CSV rows
-                const rows = data.split('\n').slice(1); 
-                let closingStrings = [];
+    // Start at index 1 to skip the header row (School, Status)
+    for (let i = 1; i < rows.length; i++) {
+      // Split columns by comma, handling potential quotes
+      const cols = rows[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+      
+      if (cols.length >= 2) {
+        const school = cols[0].replace(/"/g, "").trim();
+        const status = cols[1].replace(/"/g, "").trim();
 
-                rows.forEach(row => {
-                    // This splits by comma - if your school names have commas, we can adjust this
-                    const columns = row.split(',');
-                    if (columns.length >= 2) {
-                        const name = columns[0].replace(/"/g, "").trim();
-                        const status = columns[1].replace(/"/g, "").trim();
-                        
-                        // Ignore normal operations
-                        const ignoreList = ['open', 'normal', 'none', 'on time'];
-                        if (!ignoreList.includes(status.toLowerCase()) && name !== "") {
-                            closingStrings.push(`<span class="closing-item">${name}: <strong>${status}</strong></span>`);
-                        }
-                    }
-                });
-
-                const contentDiv = document.getElementById('ticker-content');
-                
-                if (closingStrings.length > 0) {
-                    // Double the content for a seamless, infinite loop
-                    const finalHtml = closingStrings.join(' • ') + ' • ' + closingStrings.join(' • ');
-                    contentDiv.innerHTML = finalHtml;
-                    document.getElementById('school-ticker-banner').style.display = 'flex';
-                } else {
-                    // Hide the banner if there's nothing to report
-                    document.getElementById('school-ticker-banner').style.display = 'none';
-                }
-            } catch (err) {
-                console.error("Feed error:", err);
-            }
+        if (school && status) {
+          tickerHtml += `
+            <span class="ticker-item">
+              <span class="ticker-school">${school}:</span> 
+              <span class="ticker-status">${status}</span>
+            </span>`;
+          entriesFound++;
         }
+      }
+    }
 
-        // Check for updates every 2 minutes
-        updateClosings();
-        setInterval(updateClosings, 120000);
-    </script>
-</body>
-</html>
+    if (entriesFound > 0) {
+      track.innerHTML = tickerHtml;
+    } else {
+      track.innerHTML = `<span class="ticker-item">No active closings or delays reported at this time.</span>`;
+    }
+
+  } catch (err) {
+    track.innerHTML = `<span class="ticker-item">Updates temporarily unavailable.</span>`;
+    console.error("Ticker Error:", err);
+  }
+}
+
+// Run immediately
+startTicker();
+// Refresh every 5 minutes automatically without reloading the page
+setInterval(startTicker, 300000);
+</script>
