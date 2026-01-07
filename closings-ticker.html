@@ -1,5 +1,5 @@
 <style>
-  /* Wrapper starts as hidden */
+  /* Hidden by default */
   #ticker-wrapper {
     display: none; 
     width: 100%;
@@ -15,7 +15,7 @@
   #ticker-bar {
     display: flex;
     width: 100%;
-    height: 50px;
+    height: 55px; /* Slightly taller to fit timestamp */
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
     overflow: hidden;
     box-shadow: 0 2px 5px rgba(0,0,0,0.2);
@@ -25,22 +25,33 @@
   #ticker-label {
     background-color: #bd2100;
     color: #ffffff;
-    font-weight: 800;
-    text-transform: uppercase;
-    padding: 0 25px;
+    padding: 0 20px;
     display: flex;
+    flex-direction: column; /* Stack Title and Timestamp */
     align-items: center;
     justify-content: center;
     white-space: nowrap;
     z-index: 10;
-    font-size: 15px;
-    letter-spacing: 1px;
     border-right: 2px solid #ffffff;
+  }
+
+  #label-title {
+    font-weight: 800;
+    text-transform: uppercase;
+    font-size: 14px;
+    letter-spacing: 1px;
+    margin-bottom: 2px;
+  }
+
+  #label-time {
+    font-size: 10px;
+    font-weight: 400;
+    opacity: 0.9;
   }
 
   /* WRVO Blue Section */
   #ticker-main {
-    background-color: #204180; /* Updated to WRVO Blue */
+    background-color: #204180;
     flex-grow: 1;
     position: relative;
     display: flex;
@@ -48,7 +59,6 @@
     overflow: hidden;
   }
 
-  /* The Scrolling Track */
   #ticker-track {
     display: flex;
     white-space: nowrap;
@@ -69,34 +79,24 @@
     margin-right: 8px;
   }
 
-  .ticker-status {
-    color: #ffffff;
-    font-weight: 400;
-  }
-
-  /* Animation */
   @keyframes marquee {
     from { transform: translateX(100vw); }
     to { transform: translateX(-100%); }
   }
 
-  /* Hover Effects */
-  #ticker-link-wrap:hover #ticker-track {
-    animation-play-state: paused;
-  }
-  
-  #ticker-link-wrap:hover #ticker-label {
-    background-color: #e62900;
-  }
+  #ticker-link-wrap:hover #ticker-track { animation-play-state: paused; }
+  #ticker-link-wrap:hover #ticker-label { background-color: #e62900; }
 </style>
 
 <div id="ticker-wrapper">
   <a href="https://www.wrvo.org/closings-delays" id="ticker-link-wrap" target="_blank">
     <div id="ticker-bar">
-      <div id="ticker-label">Closings & Delays</div>
+      <div id="ticker-label">
+        <div id="label-title">Closings & Delays</div>
+        <div id="label-time">Checking...</div>
+      </div>
       <div id="ticker-main">
-        <div id="ticker-track">
-          </div>
+        <div id="ticker-track"></div>
       </div>
     </div>
   </a>
@@ -109,6 +109,7 @@ async function startTicker() {
   const wrapper = document.getElementById('ticker-wrapper');
   const track = document.getElementById('ticker-track');
   const main = document.getElementById('ticker-main');
+  const timeLabel = document.getElementById('label-time');
   
   try {
     const response = await fetch(`${csvUrl}&t=${new Date().getTime()}`);
@@ -120,12 +121,10 @@ async function startTicker() {
 
     for (let i = 0; i < rows.length; i++) {
       const cols = rows[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-      
       if (cols.length >= 2) {
         const school = cols[0].replace(/"/g, "").trim();
         const status = cols[1].replace(/"/g, "").trim();
 
-        // Skip header rows
         const isHeader = school.toLowerCase() === "school" || 
                          school.toLowerCase() === "school name" || 
                          status.toLowerCase() === "status";
@@ -133,40 +132,33 @@ async function startTicker() {
         if (isHeader) continue;
 
         if (school && status) {
-          tickerHtml += `
-            <span class="ticker-item">
-              <span class="ticker-school">${school}:</span> 
-              <span class="ticker-status">${status}</span>
-            </span>`;
+          tickerHtml += `<span class="ticker-item"><span class="ticker-school">${school}:</span> ${status}</span>`;
           entriesFound++;
         }
       }
     }
 
-    // SHOW/HIDE LOGIC
     if (entriesFound > 0) {
       track.innerHTML = tickerHtml;
-      wrapper.style.display = 'block'; // Reveal the ticker
+      wrapper.style.display = 'block';
       
-      // Speed Calculation
+      // Update Timestamp
+      const now = new Date();
+      timeLabel.innerText = "Updated " + now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+      
+      // Calculate Speed
       const pixelsPerSecond = 80; 
-      const totalDistance = main.offsetWidth + track.offsetWidth;
-      const duration = totalDistance / pixelsPerSecond;
-      
+      const duration = (main.offsetWidth + track.offsetWidth) / pixelsPerSecond;
       track.style.animation = `marquee ${duration}s linear infinite`;
     } else {
-      // Hide the ticker if no data is found
       wrapper.style.display = 'none';
-      track.innerHTML = "";
     }
-
   } catch (err) {
-    console.error("Ticker Error:", err);
-    wrapper.style.display = 'none'; // Hide if there's a network error
+    wrapper.style.display = 'none';
   }
 }
 
 window.addEventListener('resize', startTicker);
 startTicker();
-setInterval(startTicker, 300000); // Check for new data every 5 minutes
+setInterval(startTicker, 300000); // 5-minute background refresh
 </script>
