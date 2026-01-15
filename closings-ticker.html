@@ -1,6 +1,7 @@
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700;900&display=swap');
 
+  /* Clean reset to prevent container stretching */
   #wrvo-ticker-container, #wrvo-ticker-container * {
     box-sizing: border-box;
   }
@@ -8,19 +9,12 @@
   #wrvo-ticker-container {
     display: none; 
     width: 100%;
-    margin: 0;
+    margin: 15px 0; /* Adds a little breathing room above and below */
     font-family: 'Roboto', sans-serif;
-    position: fixed; 
-    top: 90px; /* Aligned with Header + Player Tray */
-    left: 0;
-    right: 0;
-    z-index: 9999; 
-    background-color: #ffffff;
+    position: relative; /* Normal page flow - NOT sticky */
     overflow: hidden;
-    padding-bottom: 5px;
   }
 
-  /* Wrap link to make entire bar clickable */
   #ticker-link-wrap {
     text-decoration: none;
     display: block;
@@ -32,8 +26,7 @@
     width: 100%;
     height: 50px;
     overflow: hidden;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.2);
-    position: relative;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     background-color: #204180; /* WRVO Blue */
   }
 
@@ -89,7 +82,7 @@
     font-size: 10px;
     color: #000000;
     margin-top: 3px;
-    padding-right: 15px;
+    padding-right: 5px;
   }
 
   @keyframes marquee {
