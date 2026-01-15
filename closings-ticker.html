@@ -1,7 +1,6 @@
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700;900&display=swap');
 
-  /* Technical fix for the scrollbar and sizing issues */
   #wrvo-ticker-container, #wrvo-ticker-container * {
     box-sizing: border-box;
   }
@@ -11,16 +10,21 @@
     width: 100%;
     margin: 0;
     font-family: 'Roboto', sans-serif;
-    position: -webkit-sticky; 
-    position: sticky;
-    
-    /* OFFSET: Header (~40px) + Player Tray (50px) */
-    top: 90px; 
-    
+    position: fixed; 
+    top: 90px; /* Aligned with Header + Player Tray */
+    left: 0;
+    right: 0;
     z-index: 9999; 
     background-color: #ffffff;
-    overflow: hidden; /* Fixes the horizontal scrollbar issue */
+    overflow: hidden;
     padding-bottom: 5px;
+  }
+
+  /* Wrap link to make entire bar clickable */
+  #ticker-link-wrap {
+    text-decoration: none;
+    display: block;
+    width: 100%;
   }
 
   #ticker-bar {
@@ -28,7 +32,7 @@
     width: 100%;
     height: 50px;
     overflow: hidden;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.15);
+    box-shadow: 0 4px 6px rgba(0,0,0,0.2);
     position: relative;
     background-color: #204180; /* WRVO Blue */
   }
@@ -62,7 +66,6 @@
     white-space: nowrap;
     position: absolute;
     will-change: transform;
-    padding-left: 50px;
   }
 
   .ticker-item {
@@ -77,25 +80,6 @@
     font-weight: 700;
     margin-right: 8px;
     text-transform: uppercase;
-  }
-
-  #ticker-close {
-    position: absolute;
-    right: 10px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: white;
-    background: rgba(0,0,0,0.3);
-    border: none;
-    border-radius: 50%;
-    width: 24px;
-    height: 24px;
-    cursor: pointer;
-    z-index: 20;
-    font-weight: bold;
-    display: flex;
-    align-items: center;
-    justify-content: center;
   }
 
   #ticker-timestamp {
@@ -113,17 +97,18 @@
     to { transform: translateX(-100%); }
   }
 
-  #ticker-bar:hover #ticker-track { animation-play-state: paused; }
+  #ticker-link-wrap:hover #ticker-track { animation-play-state: paused; }
 </style>
 
 <div id="wrvo-ticker-container">
-  <div id="ticker-bar">
-    <div id="ticker-label">Closings & Delays</div>
-    <div id="ticker-main">
-      <div id="ticker-track"></div>
+  <a href="https://www.wrvo.org/closings-delays" id="ticker-link-wrap" target="_blank">
+    <div id="ticker-bar">
+      <div id="ticker-label">Closings & Delays</div>
+      <div id="ticker-main">
+        <div id="ticker-track"></div>
+      </div>
     </div>
-    <button id="ticker-close" onclick="document.getElementById('wrvo-ticker-container').style.display='none'">×</button>
-  </div>
+  </a>
   <div id="ticker-timestamp">Checking for updates...</div>
 </div>
 
@@ -148,7 +133,6 @@ async function startTicker() {
         const school = cols[0].replace(/"/g, "").trim();
         if (school.toLowerCase() === "school" || school.toLowerCase() === "school name") continue;
 
-        // Pulling from Columns B, C, and D
         let statusParts = [];
         for (let j = 1; j <= 3; j++) {
             if (cols[j]) {
@@ -170,7 +154,6 @@ async function startTicker() {
       const now = new Date();
       document.getElementById('ticker-timestamp').innerText = "Last Updated: " + now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
       
-      // Speed check
       const duration = (main.offsetWidth + track.offsetWidth) / 70;
       track.style.animation = `marquee ${duration}s linear infinite`;
     } else {
