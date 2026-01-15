@@ -4,8 +4,17 @@
   #wrvo-ticker-container {
     display: none; 
     width: 100%;
-    margin: 15px 0;
+    margin: 0;
     font-family: 'Roboto', sans-serif;
+    position: -webkit-sticky; 
+    position: sticky;
+    
+    /* THE MATH: Header (~40-50px) + Player (50px) */
+    top: 95px; 
+    
+    z-index: 999; 
+    background-color: #ffffff;
+    padding-bottom: 5px;
   }
 
   #ticker-link-wrap {
@@ -19,7 +28,8 @@
     width: 100%;
     height: 50px;
     overflow: hidden;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+    box-shadow: 0 4px 6px rgba(0,0,0,0.15);
+    position: relative;
   }
 
   #ticker-label {
@@ -27,13 +37,13 @@
     color: #ffffff;
     font-weight: 900;
     text-transform: uppercase;
-    padding: 0 25px;
+    padding: 0 20px;
     display: flex;
     align-items: center;
     justify-content: center;
     white-space: nowrap;
     z-index: 10;
-    font-size: 15px;
+    font-size: 14px;
     letter-spacing: 1px;
     border-right: 2px solid #ffffff;
   }
@@ -56,30 +66,44 @@
 
   .ticker-item {
     color: #ffffff;
-    font-size: 18px;
-    margin-right: 100px; /* Wider gap for longer messages */
+    font-size: 17px;
+    margin-right: 100px;
     display: flex;
     align-items: center;
   }
 
-  .ticker-school {
-    font-weight: 700;
-    margin-right: 8px;
-    text-transform: uppercase;
-  }
+  .ticker-school { font-weight: 700; margin-right: 8px; text-transform: uppercase; }
 
-  .ticker-status {
-    font-weight: 400;
+  /* Close Button Customization */
+  #ticker-close {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: white;
+    background: rgba(0,0,0,0.3);
+    border: none;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+    z-index: 20;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
   }
+  #ticker-close:hover { background: rgba(0,0,0,0.6); }
 
   #ticker-timestamp {
     display: block;
     width: 100%;
     text-align: right;
-    font-size: 11px;
+    font-size: 10px;
     color: #000000;
-    margin-top: 5px;
-    font-weight: 400;
+    margin-top: 3px;
+    padding-right: 10px;
   }
 
   @keyframes marquee {
@@ -88,16 +112,14 @@
   }
 
   #ticker-link-wrap:hover #ticker-track { animation-play-state: paused; }
-  #ticker-link-wrap:hover #ticker-label { background-color: #e62900; }
 </style>
 
 <div id="wrvo-ticker-container">
+  <button id="ticker-close" onclick="document.getElementById('wrvo-ticker-container').style.display='none'">×</button>
   <a href="https://www.wrvo.org/closings-delays" id="ticker-link-wrap" target="_blank">
     <div id="ticker-bar">
       <div id="ticker-label">Closings & Delays</div>
-      <div id="ticker-main">
-        <div id="ticker-track"></div>
-      </div>
+      <div id="ticker-main"><div id="ticker-track"></div></div>
     </div>
     <div id="ticker-timestamp">Checking for updates...</div>
   </a>
@@ -106,46 +128,32 @@
 <script>
 async function startTicker() {
   const csvUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRijmTFMmlSUW6T-q2Yt_0QW0Y_2BLXVyxmX49Grb8gZFfJ0oh7lzdSPON1F0QRHum75rkoEJrLdb-b/pub?output=csv";
-  
   const container = document.getElementById('wrvo-ticker-container');
   const track = document.getElementById('ticker-track');
   const main = document.getElementById('ticker-main');
-  const timeDisplay = document.getElementById('ticker-timestamp');
   
   try {
     const response = await fetch(`${csvUrl}&t=${new Date().getTime()}`);
     const text = await response.text();
     const rows = text.split(/\r?\n/).filter(row => row.trim() !== "");
-    
     let tickerHtml = "";
     let entriesFound = 0;
 
     for (let i = 0; i < rows.length; i++) {
       const cols = rows[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-      
       if (cols.length >= 2) {
         const school = cols[0].replace(/"/g, "").trim();
-        
-        // Skip Header Row
         if (school.toLowerCase() === "school" || school.toLowerCase() === "school name") continue;
 
-        // Gather all status messages from Cols B, C, and D
         let statusParts = [];
         for (let j = 1; j <= 3; j++) {
             if (cols[j]) {
-                const cleanMsg = cols[j].replace(/"/g, "").trim();
-                if (cleanMsg) statusParts.push(cleanMsg);
+                const clean = cols[j].replace(/"/g, "").trim();
+                if (clean) statusParts.push(clean);
             }
         }
-
-        // Only add to ticker if there is a school name AND at least one message
         if (school && statusParts.length > 0) {
-          const fullStatus = statusParts.join(" | ");
-          tickerHtml += `
-            <span class="ticker-item">
-              <span class="ticker-school">${school}:</span> 
-              <span class="ticker-status">${fullStatus}</span>
-            </span>`;
+          tickerHtml += `<span class="ticker-item"><span class="ticker-school">${school}:</span> ${statusParts.join(" | ")}</span>`;
           entriesFound++;
         }
       }
@@ -154,25 +162,15 @@ async function startTicker() {
     if (entriesFound > 0) {
       track.innerHTML = tickerHtml;
       container.style.display = 'block';
-      
       const now = new Date();
-      timeDisplay.innerText = "Last Updated: " + now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-      
-      // Calculate speed based on length of combined text
-      const pixelsPerSecond = 70; // Slightly slower because messages are longer now
-      const duration = (main.offsetWidth + track.offsetWidth) / pixelsPerSecond;
+      document.getElementById('ticker-timestamp').innerText = "Last Updated: " + now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+      const duration = (main.offsetWidth + track.offsetWidth) / 70;
       track.style.animation = `marquee ${duration}s linear infinite`;
     } else {
       container.style.display = 'none';
     }
-
-  } catch (err) {
-    console.error("Ticker Error:", err);
-    container.style.display = 'none';
-  }
+  } catch (err) { container.style.display = 'none'; }
 }
-
-window.addEventListener('resize', startTicker);
 startTicker();
 setInterval(startTicker, 300000);
 </script>
