@@ -1,6 +1,11 @@
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700;900&display=swap');
 
+  /* Technical fix for the scrollbar and sizing issues */
+  #wrvo-ticker-container, #wrvo-ticker-container * {
+    box-sizing: border-box;
+  }
+
   #wrvo-ticker-container {
     display: none; 
     width: 100%;
@@ -9,18 +14,13 @@
     position: -webkit-sticky; 
     position: sticky;
     
-    /* THE MATH: Header (~40-50px) + Player (50px) */
-    top: 95px; 
+    /* OFFSET: Header (~40px) + Player Tray (50px) */
+    top: 90px; 
     
-    z-index: 999; 
+    z-index: 9999; 
     background-color: #ffffff;
+    overflow: hidden; /* Fixes the horizontal scrollbar issue */
     padding-bottom: 5px;
-  }
-
-  #ticker-link-wrap {
-    text-decoration: none;
-    display: block;
-    width: 100%;
   }
 
   #ticker-bar {
@@ -30,10 +30,11 @@
     overflow: hidden;
     box-shadow: 0 4px 6px rgba(0,0,0,0.15);
     position: relative;
+    background-color: #204180; /* WRVO Blue */
   }
 
   #ticker-label {
-    background-color: #bd2100;
+    background-color: #bd2100; /* WRVO Red */
     color: #ffffff;
     font-weight: 900;
     text-transform: uppercase;
@@ -49,7 +50,6 @@
   }
 
   #ticker-main {
-    background-color: #204180;
     flex-grow: 1;
     position: relative;
     display: flex;
@@ -62,6 +62,7 @@
     white-space: nowrap;
     position: absolute;
     will-change: transform;
+    padding-left: 50px;
   }
 
   .ticker-item {
@@ -72,9 +73,12 @@
     align-items: center;
   }
 
-  .ticker-school { font-weight: 700; margin-right: 8px; text-transform: uppercase; }
+  .ticker-school {
+    font-weight: 700;
+    margin-right: 8px;
+    text-transform: uppercase;
+  }
 
-  /* Close Button Customization */
   #ticker-close {
     position: absolute;
     right: 10px;
@@ -92,9 +96,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 14px;
   }
-  #ticker-close:hover { background: rgba(0,0,0,0.6); }
 
   #ticker-timestamp {
     display: block;
@@ -103,7 +105,7 @@
     font-size: 10px;
     color: #000000;
     margin-top: 3px;
-    padding-right: 10px;
+    padding-right: 15px;
   }
 
   @keyframes marquee {
@@ -111,18 +113,18 @@
     to { transform: translateX(-100%); }
   }
 
-  #ticker-link-wrap:hover #ticker-track { animation-play-state: paused; }
+  #ticker-bar:hover #ticker-track { animation-play-state: paused; }
 </style>
 
 <div id="wrvo-ticker-container">
-  <button id="ticker-close" onclick="document.getElementById('wrvo-ticker-container').style.display='none'">×</button>
-  <a href="https://www.wrvo.org/closings-delays" id="ticker-link-wrap" target="_blank">
-    <div id="ticker-bar">
-      <div id="ticker-label">Closings & Delays</div>
-      <div id="ticker-main"><div id="ticker-track"></div></div>
+  <div id="ticker-bar">
+    <div id="ticker-label">Closings & Delays</div>
+    <div id="ticker-main">
+      <div id="ticker-track"></div>
     </div>
-    <div id="ticker-timestamp">Checking for updates...</div>
-  </a>
+    <button id="ticker-close" onclick="document.getElementById('wrvo-ticker-container').style.display='none'">×</button>
+  </div>
+  <div id="ticker-timestamp">Checking for updates...</div>
 </div>
 
 <script>
@@ -136,6 +138,7 @@ async function startTicker() {
     const response = await fetch(`${csvUrl}&t=${new Date().getTime()}`);
     const text = await response.text();
     const rows = text.split(/\r?\n/).filter(row => row.trim() !== "");
+    
     let tickerHtml = "";
     let entriesFound = 0;
 
@@ -145,6 +148,7 @@ async function startTicker() {
         const school = cols[0].replace(/"/g, "").trim();
         if (school.toLowerCase() === "school" || school.toLowerCase() === "school name") continue;
 
+        // Pulling from Columns B, C, and D
         let statusParts = [];
         for (let j = 1; j <= 3; j++) {
             if (cols[j]) {
@@ -152,6 +156,7 @@ async function startTicker() {
                 if (clean) statusParts.push(clean);
             }
         }
+
         if (school && statusParts.length > 0) {
           tickerHtml += `<span class="ticker-item"><span class="ticker-school">${school}:</span> ${statusParts.join(" | ")}</span>`;
           entriesFound++;
@@ -164,12 +169,16 @@ async function startTicker() {
       container.style.display = 'block';
       const now = new Date();
       document.getElementById('ticker-timestamp').innerText = "Last Updated: " + now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+      
+      // Speed check
       const duration = (main.offsetWidth + track.offsetWidth) / 70;
       track.style.animation = `marquee ${duration}s linear infinite`;
     } else {
       container.style.display = 'none';
     }
-  } catch (err) { container.style.display = 'none'; }
+  } catch (err) {
+    container.style.display = 'none';
+  }
 }
 startTicker();
 setInterval(startTicker, 300000);
